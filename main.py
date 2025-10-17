@@ -148,15 +148,25 @@ def main():
         return
 
     # 1) Cửa sổ tạm cho hộp thoại đăng nhập/kích hoạt
-    _tmp_root = tk.Tk()
-    _tmp_root.withdraw()
+    _tmp_root = None
+    try:
+        _tmp_root = tk.Tk()
+        _tmp_root.withdraw()
+    except tk.TclError as exc:
+        print(
+            "Không thể khởi chạy giao diện Tkinter vì lỗi khi khởi tạo root window:",
+            exc,
+        )
+        return
+
     ok = True
     try:
         if getattr(config, "ENABLE_LICENSE", True):
             ok = ensure_license(_tmp_root)
     finally:
         try:
-            _tmp_root.destroy()
+            if _tmp_root is not None:
+                _tmp_root.destroy()
         except Exception:
             pass
 
