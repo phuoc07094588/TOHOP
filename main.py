@@ -4,9 +4,11 @@ from __future__ import annotations
 main.py
 - Khởi chạy ứng dụng GUI chính (Tkinter + ttk.Notebook)
 - TÍCH HỢP kích hoạt/đăng nhập bản quyền qua ui_login.ensure_license
-- Tạo các tab: CẤU HÌNH, LC, (PHÂN TÍCH nếu có), COMBO
+- Tạo các tab: CẤU HÌNH, LC, COMBO
 """
 
+import os
+import sys
 import traceback
 
 # --- Tkinter / ttk ---
@@ -31,14 +33,6 @@ except Exception:
 from ui_loadcase import LoadCaseTab
 from ui_combo import ComboTab
 from ui_config import ConfigTab
-
-# Tab phân tích là tuỳ chọn
-try:
-    from ui_analysis import AnalysisTab  # type: ignore
-    HAS_ANALYSIS = True
-except Exception:
-    HAS_ANALYSIS = False
-    AnalysisTab = None  # type: ignore
 
 # --- Đăng nhập/kích hoạt bản quyền ---
 try:
@@ -90,17 +84,6 @@ class RobotMainGUI(tk.Tk):
             ttk.Label(self.tab_lc, text=f"Lỗi khởi tạo LoadCaseTab: {e}", foreground="red").pack(anchor="w", padx=12, pady=12)
         self.nb.add(self.tab_lc, text="LC")
 
-        # ---- Tab: PHÂN TÍCH (nếu có) ----
-        if HAS_ANALYSIS and AnalysisTab is not None:
-            try:
-                self.tab_analysis = AnalysisTab(self)  # type: ignore
-                self.nb.add(self.tab_analysis, text="PHÂN TÍCH")
-            except Exception as e:
-                # Không chặn app vì tab tuỳ chọn
-                pane = ttk.Frame(self)
-                ttk.Label(pane, text=f"Lỗi khởi tạo AnalysisTab: {e}", foreground="red").pack(anchor="w", padx=12, pady=12)
-                self.nb.add(pane, text="PHÂN TÍCH")
-
         # ---- Tab: COMBO ----
         # Một số phiên bản ComboTab cần các callable từ LoadCaseTab; mình cố gắng truyền nếu khớp,
         # nếu không sẽ rớt về gọi với (parent) thuần.
@@ -143,19 +126,47 @@ class RobotMainGUI(tk.Tk):
 # =========================
 #   HÀM MAIN
 # =========================
+def _can_launch_tk() -> bool:
+    """Return True if a Tk root window can be created in the current environment."""
+
+    # Trên Windows và macOS luôn giả định có thể khởi tạo Tk (không dựa vào DISPLAY)
+    if sys.platform.startswith("win") or sys.platform == "darwin":
+        return True
+
+    display = os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    if display:
+        return True
+
+    return False
+
+
 def main():
     utf8_console()
 
+    if not _can_launch_tk():
+        print("Không thể khởi chạy giao diện Tkinter vì thiếu biến môi trường DISPLAY.")
+        return
+
     # 1) Cửa sổ tạm cho hộp thoại đăng nhập/kích hoạt
-    _tmp_root = tk.Tk()
-    _tmp_root.withdraw()
+    _tmp_root = None
+    try:
+        _tmp_root = tk.Tk()
+        _tmp_root.withdraw()
+    except tk.TclError as exc:
+        print(
+            "Không thể khởi chạy giao diện Tkinter vì lỗi khi khởi tạo root window:",
+            exc,
+        )
+        return
+
     ok = True
     try:
         if getattr(config, "ENABLE_LICENSE", True):
             ok = ensure_license(_tmp_root)
     finally:
         try:
-            _tmp_root.destroy()
+            if _tmp_root is not None:
+                _tmp_root.destroy()
         except Exception:
             pass
 
