@@ -7,6 +7,8 @@ main.py
 - Tạo các tab: CẤU HÌNH, LC, (PHÂN TÍCH nếu có), COMBO
 """
 
+import os
+import sys
 import traceback
 
 # --- Tkinter / ttk ---
@@ -143,8 +145,26 @@ class RobotMainGUI(tk.Tk):
 # =========================
 #   HÀM MAIN
 # =========================
+def _can_launch_tk() -> bool:
+    """Return True if a Tk root window can be created in the current environment."""
+
+    # Trên Windows và macOS luôn giả định có thể khởi tạo Tk (không dựa vào DISPLAY)
+    if sys.platform.startswith("win") or sys.platform == "darwin":
+        return True
+
+    display = os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    if display:
+        return True
+
+    return False
+
+
 def main():
     utf8_console()
+
+    if not _can_launch_tk():
+        print("Không thể khởi chạy giao diện Tkinter vì thiếu biến môi trường DISPLAY.")
+        return
 
     # 1) Cửa sổ tạm cho hộp thoại đăng nhập/kích hoạt
     _tmp_root = tk.Tk()
